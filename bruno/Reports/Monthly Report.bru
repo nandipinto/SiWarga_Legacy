@@ -1,0 +1,19 @@
+meta {
+  name: Monthly Report
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/reports/monthly?year=2026&month=4
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+params:query {
+  year: 2026
+  month: 4
+  rtId: ~
+}

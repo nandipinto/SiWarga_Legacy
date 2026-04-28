@@ -1,0 +1,21 @@
+meta {
+  name: Update RW
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/rw/1
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body {
+  {
+    "name": "RW 01 Updated",
+    "description": "Rukun Warga 01 Updated"
+  }
+}

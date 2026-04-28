@@ -1,0 +1,23 @@
+meta {
+  name: Create Resident
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/residents
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body {
+  {
+    "houseId": 1,
+    "name": "Budi Santoso",
+    "email": "budi@example.com",
+    "phone": "08123456789"
+  }
+}

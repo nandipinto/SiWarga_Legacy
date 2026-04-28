@@ -1,0 +1,22 @@
+meta {
+  name: Update RT
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/rt/1
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body {
+  {
+    "rwId": 1,
+    "name": "RT 01 Updated",
+    "description": "Rukun Tetangga 01 Updated"
+  }
+}

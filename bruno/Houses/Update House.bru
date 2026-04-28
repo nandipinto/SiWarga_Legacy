@@ -1,0 +1,23 @@
+meta {
+  name: Update House
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/houses/1
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "rtId": 1,
+    "block": "A",
+    "houseNumber": "01"
+  }
+}

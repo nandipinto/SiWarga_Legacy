@@ -1,0 +1,13 @@
+meta {
+  name: Arrears Status
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/status/arrears/1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

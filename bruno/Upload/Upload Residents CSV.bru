@@ -1,0 +1,15 @@
+meta {
+  name: Upload Residents CSV
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/upload/residents
+  body: none
+  auth: inherit
+}
+
+body:multipart-form {
+  file: @file(/path/to/residents.csv)
+}

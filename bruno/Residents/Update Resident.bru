@@ -1,0 +1,23 @@
+meta {
+  name: Update Resident
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/residents/1
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body {
+  {
+    "houseId": 1,
+    "name": "Budi Santoso Updated",
+    "email": "budi@example.com",
+    "phone": "08123456789"
+  }
+}

@@ -1,0 +1,13 @@
+meta {
+  name: Get RT by ID
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/rt/1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

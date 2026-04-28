@@ -1,0 +1,24 @@
+meta {
+  name: Create Payment
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/payments
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body {
+  {
+    "houseId": 1,
+    "amount": 50000,
+    "paymentDate": "2026-04-01",
+    "receiptNumber": "RCP-001",
+    "notes": "Iuran bulan April 2026"
+  }
+}

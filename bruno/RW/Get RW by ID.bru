@@ -1,0 +1,13 @@
+meta {
+  name: Get RW by ID
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/rw/1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

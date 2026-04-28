@@ -1,0 +1,13 @@
+meta {
+  name: Get All Payments
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/payments
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

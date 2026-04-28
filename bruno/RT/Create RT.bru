@@ -1,0 +1,23 @@
+meta {
+  name: Create RT
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/rt
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "rwId": 1,
+    "name": "RT 01",
+    "description": "Rukun Tetangga 01"
+  }
+}

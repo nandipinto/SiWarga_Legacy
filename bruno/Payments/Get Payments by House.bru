@@ -1,0 +1,13 @@
+meta {
+  name: Get Payments by House
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/payments/house/1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,13 @@
+meta {
+  name: Delete Payment
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/payments/1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,22 @@
+meta {
+  name: Create RW
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/rw
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "RW 01",
+    "description": "Rukun Warga 01"
+  }
+}

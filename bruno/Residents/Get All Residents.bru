@@ -1,0 +1,13 @@
+meta {
+  name: Get All Residents
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/residents
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,13 @@
+meta {
+  name: Delete RT
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/rt/1
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
