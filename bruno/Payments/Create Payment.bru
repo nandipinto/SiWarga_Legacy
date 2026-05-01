@@ -6,6 +6,8 @@ meta {
 
 post {
   url: {{baseUrl}}/payments
+  body: json
+  auth: none
 }
 
 headers {
@@ -13,12 +15,12 @@ headers {
   Authorization: Bearer {{token}}
 }
 
-body {
+body:json {
   {
     "houseId": 1,
-    "amount": 50000,
-    "paymentDate": "2026-04-01",
-    "receiptNumber": "RCP-001",
-    "notes": "Iuran bulan April 2026"
+    "amount": 4000000,
+    "paymentDate": "2026-04-03",
+    "receiptNumber": "RCP-003",
+    "notes": "Pembayaran via transfer ke rek bendahara RT 01"
   }
 }

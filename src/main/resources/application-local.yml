@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/siwarga
-    username: ${DB_USER:siwarga}
-    password: ${DB_PASS:siwarga}
+    username: siwarga
+    password: siwarga
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -19,12 +19,12 @@ server:
   port: 8080
 
 jwt:
-  secret: ${JWT_SECRET:iXG1lBTYhZZu78t14GS5Yge2vdqPcKbNmd6dKF9BC2i}
+  secret: iXG1lBTYhZZu78t14GS5Yge2vdqPcKbNmd6dKF9BC2i
   expiration-ms: 86400000
 
 admin:
-  username: ${ADMIN_USERNAME:admin}
-  password: ${ADMIN_PASSWORD:admin123}
+  username: admin
+  password: admin123
 
 logging:
   level:

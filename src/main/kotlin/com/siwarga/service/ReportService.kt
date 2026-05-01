@@ -1,8 +1,10 @@
 package com.siwarga.service
 
 import com.siwarga.domain.enums.LedgerStatus
+import com.siwarga.dto.response.ArrearDetail
 import com.siwarga.dto.response.ArrearsStatusResponse
 import com.siwarga.dto.response.FineDetail
+import com.siwarga.dto.response.HouseFinancialStandingResponse
 import com.siwarga.dto.response.MonthlyReportResponse
 import com.siwarga.dto.response.MonthlyReportRow
 import com.siwarga.exception.ResourceNotFoundException
@@ -63,6 +65,62 @@ class ReportService(
                     status = fine.status.name
                 )
             }
+        )
+    }
+
+    @Transactional
+    fun getFinancialStanding(houseId: Long): HouseFinancialStandingResponse {
+        val house = houseRepository.findById(houseId)
+            .orElseThrow { ResourceNotFoundException("House with id $houseId not found") }
+        val resident = residentRepository.findByHouseId(houseId).orElse(null)
+        val currentMonth = YearMonth.now()
+
+        ledgerService.ensureLedgerExists(house, currentMonth)
+        fineService.computeAndPersistFines(house)
+
+        val unpaidLedgers = ledgerRepository.findUnpaidUpToMonth(
+            houseId, currentMonth.year, currentMonth.monthValue,
+            listOf(LedgerStatus.UNPAID, LedgerStatus.PARTIAL)
+        )
+        val unpaidFines = fineService.getUnpaidFines(houseId)
+        val futurePaidLedgers = ledgerRepository.findFuturePaidLedgers(
+            houseId, currentMonth.year, currentMonth.monthValue
+        )
+
+        val totalArrearsOwed = unpaidLedgers.sumOf { it.amountDue - it.amountPaid }
+        val totalFinesOwed = unpaidFines.sumOf { it.amount - it.amountPaid }
+        val prepaidBalance = futurePaidLedgers.sumOf { it.amountPaid }
+        val netBalance = totalArrearsOwed + totalFinesOwed - prepaidBalance
+
+        return HouseFinancialStandingResponse(
+            houseId = house.id,
+            houseDisplay = house.displayName,
+            rtName = house.rt.name,
+            residentName = resident?.name,
+            prepaidBalance = prepaidBalance,
+            arrears = unpaidLedgers.map { ledger ->
+                ArrearDetail(
+                    period = "%d-%02d".format(ledger.periodYear, ledger.periodMonth),
+                    amountDue = ledger.amountDue,
+                    amountPaid = ledger.amountPaid,
+                    amountOwed = ledger.amountDue - ledger.amountPaid,
+                    status = ledger.status.name,
+                )
+            },
+            totalArrearsOwed = totalArrearsOwed,
+            fines = unpaidFines.map { fine ->
+                FineDetail(
+                    id = fine.id,
+                    fineType = fine.fineType.name,
+                    amount = fine.amount,
+                    amountPaid = fine.amountPaid,
+                    amountOwed = fine.amount - fine.amountPaid,
+                    triggerMonth = fine.triggerMonth,
+                    status = fine.status.name,
+                )
+            },
+            totalFinesOwed = totalFinesOwed,
+            netBalance = netBalance,
         )
     }
 

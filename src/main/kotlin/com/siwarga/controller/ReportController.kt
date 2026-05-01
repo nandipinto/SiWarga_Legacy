@@ -1,6 +1,7 @@
 package com.siwarga.controller
 
 import com.siwarga.dto.response.ArrearsStatusResponse
+import com.siwarga.dto.response.HouseFinancialStandingResponse
 import com.siwarga.dto.response.MonthlyReportResponse
 import com.siwarga.service.ReportService
 import org.springframework.security.access.prepost.PreAuthorize
@@ -25,4 +26,9 @@ class ReportController(
     fun arrearsStatus(
         @PathVariable houseId: Long,
     ): ArrearsStatusResponse = reportService.getArrearsStatus(houseId)
+
+    @GetMapping("/houses/{houseId}/financial-standing")
+    fun financialStanding(
+        @PathVariable houseId: Long,
+    ): HouseFinancialStandingResponse = reportService.getFinancialStanding(houseId)
 }

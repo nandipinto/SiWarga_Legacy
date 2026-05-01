@@ -28,6 +28,14 @@ interface DuesLedgerRepository : JpaRepository<DuesLedger, Long> {
         houseId: Long, year: Int, month: Int, statuses: List<LedgerStatus>
     ): List<DuesLedger>
 
+    @Query(
+        "SELECT dl FROM DuesLedger dl WHERE dl.house.id = :houseId " +
+        "AND (dl.periodYear > :year OR (dl.periodYear = :year AND dl.periodMonth > :month)) " +
+        "AND dl.amountPaid > 0 " +
+        "ORDER BY dl.periodYear ASC, dl.periodMonth ASC"
+    )
+    fun findFuturePaidLedgers(houseId: Long, year: Int, month: Int): List<DuesLedger>
+
     fun findByPeriodYearAndPeriodMonth(year: Int, month: Int): List<DuesLedger>
 
     @Query("SELECT dl FROM DuesLedger dl WHERE dl.house.rt.id = :rtId AND dl.periodYear = :year AND dl.periodMonth = :month")

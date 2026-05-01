@@ -1,0 +1,13 @@
+meta {
+  name: Financial Standing
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/houses/1/financial-standing
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

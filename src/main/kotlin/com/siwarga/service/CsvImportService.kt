@@ -27,7 +27,7 @@ class CsvImportService(
     private val residentRepository: ResidentRepository,
     private val paymentRepository: PaymentRepository,
     private val paymentService: PaymentService,
-    private val rtService: RtService
+    private val rtService: RtService,
 ) {
     private val log = LoggerFactory.getLogger(CsvImportService::class.java)
 
@@ -36,9 +36,10 @@ class CsvImportService(
      */
     @Transactional
     fun importResidents(inputStream: InputStream): CsvImportResult {
-        val reader = CSVReaderBuilder(InputStreamReader(inputStream, Charsets.UTF_8))
-            .withSkipLines(1) // skip header
-            .build()
+        val reader =
+            CSVReaderBuilder(InputStreamReader(inputStream, Charsets.UTF_8))
+                .withSkipLines(1) // skip header
+                .build()
 
         val rows = mutableListOf<CsvRowResult>()
         var rowNumber = 1
@@ -65,17 +66,27 @@ class CsvImportService(
                 }
 
                 try {
-                    val rw = rwRepository.findByName(rwName).orElseGet {
-                        rwRepository.save(com.siwarga.domain.entity.Rw(name = rwName))
-                    }
-                    val rt = rtRepository.findByName(rtName).orElseGet {
-                        rtRepository.save(com.siwarga.domain.entity.Rt(rw = rw, name = rtName))
-                    }
-
-                    val house = houseRepository.findByRtIdAndBlockAndHouseNumber(rt.id, block, houseNumber)
-                        .orElseGet {
-                            houseRepository.save(House(rt = rt, block = block, houseNumber = houseNumber))
+                    val rw =
+                        rwRepository.findByName(rwName).orElseGet {
+                            rwRepository.save(
+                                com.siwarga.domain.entity
+                                    .Rw(name = rwName),
+                            )
                         }
+                    val rt =
+                        rtRepository.findByName(rtName).orElseGet {
+                            rtRepository.save(
+                                com.siwarga.domain.entity
+                                    .Rt(rw = rw, name = rtName),
+                            )
+                        }
+
+                    val house =
+                        houseRepository
+                            .findByRtIdAndBlockAndHouseNumber(rt.id, block, houseNumber)
+                            .orElseGet {
+                                houseRepository.save(House(rt = rt, block = block, houseNumber = houseNumber))
+                            }
 
                     if (residentRepository.existsByHouseId(house.id)) {
                         rows.add(CsvRowResult(rowNumber, "SKIPPED", "House ${house.displayName} already has a resident"))
@@ -84,7 +95,6 @@ class CsvImportService(
 
                     residentRepository.save(Resident(house = house, name = residentName, email = email, phone = phone))
                     rows.add(CsvRowResult(rowNumber, "SUCCESS", "Resident '$residentName' created for ${house.displayName}"))
-
                 } catch (e: Exception) {
                     log.error("Error importing resident row $rowNumber", e)
                     rows.add(CsvRowResult(rowNumber, "ERROR", e.message ?: "Unexpected error"))
@@ -97,7 +107,7 @@ class CsvImportService(
             successCount = rows.count { it.status == "SUCCESS" },
             skippedCount = rows.count { it.status == "SKIPPED" },
             errorCount = rows.count { it.status == "ERROR" },
-            rows = rows
+            rows = rows,
         )
     }
 
@@ -105,9 +115,10 @@ class CsvImportService(
      * CSV format: rt_name,block,house_number,amount,payment_date,receipt_number,notes
      */
     fun importPayments(inputStream: InputStream): CsvImportResult {
-        val reader = CSVReaderBuilder(InputStreamReader(inputStream, Charsets.UTF_8))
-            .withSkipLines(1)
-            .build()
+        val reader =
+            CSVReaderBuilder(InputStreamReader(inputStream, Charsets.UTF_8))
+                .withSkipLines(1)
+                .build()
 
         val rows = mutableListOf<CsvRowResult>()
         var rowNumber = 1
@@ -139,12 +150,13 @@ class CsvImportService(
                     continue
                 }
 
-                val paymentDate = try {
-                    LocalDate.parse(dateStr)
-                } catch (e: DateTimeParseException) {
-                    rows.add(CsvRowResult(rowNumber, "ERROR", "Invalid date format '$dateStr' (expected yyyy-MM-dd)"))
-                    continue
-                }
+                val paymentDate =
+                    try {
+                        LocalDate.parse(dateStr)
+                    } catch (e: DateTimeParseException) {
+                        rows.add(CsvRowResult(rowNumber, "ERROR", "Invalid date format '$dateStr' (expected yyyy-MM-dd)"))
+                        continue
+                    }
 
                 if (receiptNumber != null && paymentRepository.existsByReceiptNumber(receiptNumber)) {
                     rows.add(CsvRowResult(rowNumber, "SKIPPED", "Receipt number '$receiptNumber' already exists"))
@@ -152,23 +164,25 @@ class CsvImportService(
                 }
 
                 try {
-                    val house = houseRepository.findByRtNameAndBlockAndHouseNumber(rtName, block, houseNumber)
-                        .orElse(null)
+                    val house =
+                        houseRepository
+                            .findByRtNameAndBlockAndHouseNumber(rtName, block, houseNumber)
+                            .orElse(null)
                     if (house == null) {
                         rows.add(CsvRowResult(rowNumber, "ERROR", "House not found: $rtName / Blok $block No. $houseNumber"))
                         continue
                     }
 
-                    val request = CreatePaymentRequest(
-                        houseId = house.id,
-                        amount = amount,
-                        paymentDate = paymentDate,
-                        receiptNumber = receiptNumber,
-                        notes = notes
-                    )
+                    val request =
+                        CreatePaymentRequest(
+                            houseId = house.id,
+                            amount = amount,
+                            paymentDate = paymentDate,
+                            receiptNumber = receiptNumber,
+                            notes = notes,
+                        )
                     val result = paymentService.create(request)
                     rows.add(CsvRowResult(rowNumber, "SUCCESS", "Payment allocated for ${house.displayName}", result))
-
                 } catch (e: Exception) {
                     log.error("Error importing payment row $rowNumber", e)
                     rows.add(CsvRowResult(rowNumber, "ERROR", e.message ?: "Unexpected error"))
@@ -181,7 +195,7 @@ class CsvImportService(
             successCount = rows.count { it.status == "SUCCESS" },
             skippedCount = rows.count { it.status == "SKIPPED" },
             errorCount = rows.count { it.status == "ERROR" },
-            rows = rows
+            rows = rows,
         )
     }
 }

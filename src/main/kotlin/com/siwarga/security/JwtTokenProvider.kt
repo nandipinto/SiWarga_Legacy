@@ -13,16 +13,20 @@ import javax.crypto.SecretKey
 
 @Component
 class JwtTokenProvider(
-    @Value("\${jwt.secret}") private val secret: String,
-    @Value("\${jwt.expiration-ms}") private val expirationMs: Long
+    @param:Value("\${jwt.secret}") private val secret: String,
+    @param:Value("\${jwt.expiration-ms}") private val expirationMs: Long,
 ) {
     private val key: SecretKey by lazy {
         Keys.hmacShaKeyFor(secret.toByteArray())
     }
 
-    fun generateToken(username: String, role: String): String {
+    fun generateToken(
+        username: String,
+        role: String,
+    ): String {
         val now = Date()
-        return Jwts.builder()
+        return Jwts
+            .builder()
             .subject(username)
             .claim("role", role)
             .issuedAt(now)
@@ -31,9 +35,7 @@ class JwtTokenProvider(
             .compact()
     }
 
-    fun validateToken(token: String): Boolean {
-        return runCatching { parseClaims(token) }.isSuccess
-    }
+    fun validateToken(token: String): Boolean = runCatching { parseClaims(token) }.isSuccess
 
     fun getAuthentication(token: String): Authentication {
         val claims = parseClaims(token)
@@ -46,5 +48,10 @@ class JwtTokenProvider(
     fun getUsername(token: String): String = parseClaims(token).subject
 
     private fun parseClaims(token: String): Claims =
-        Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
+        Jwts
+            .parser()
+            .verifyWith(key)
+            .build()
+            .parseSignedClaims(token)
+            .payload
 }

@@ -1,5 +1,6 @@
 package com.siwarga.service
 
+import com.siwarga.domain.entity.DuesLedger
 import com.siwarga.domain.entity.Fine
 import com.siwarga.domain.entity.Payment
 import com.siwarga.domain.entity.PaymentAllocation
@@ -18,6 +19,7 @@ import com.siwarga.repository.UserRepository
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.time.YearMonth
 
 @Service
@@ -78,14 +80,14 @@ class PaymentService(
                     currentMonth.year,
                     currentMonth.monthValue,
                     listOf(LedgerStatus.UNPAID, LedgerStatus.PARTIAL),
-                ).toMutableList()
+                )
 
         val unpaidFines =
             fineRepository
                 .findByHouseIdAndStatusInOrderByTriggerMonthAsc(
                     house.id,
                     listOf(LedgerStatus.UNPAID, LedgerStatus.PARTIAL),
-                ).toMutableList()
+                )
 
         val hasArrears = unpaidLedgers.isNotEmpty() || unpaidFines.isNotEmpty()
 
@@ -112,13 +114,13 @@ class PaymentService(
                 ),
             )
 
-        val allocations = mutableListOf<PaymentAllocation>()
         val allocationDetails = mutableListOf<AllocationDetail>()
+        val modifiedFines = mutableListOf<Fine>()
+        val newAllocations = mutableListOf<PaymentAllocation>()
 
         // Step 6: Interleave ledgers and fines by timeline position and allocate
         // Fines: triggerMonth is the 1-based position in the consecutive-unpaid run.
         // We place each fine just before the ledger at that same sequential index.
-        val ledgerIterator = unpaidLedgers.iterator()
         val fineIterator = unpaidFines.iterator()
         var nextFine: Fine? = if (fineIterator.hasNext()) fineIterator.next() else null
         var consecutivePos = 0 // track position in unpaid run for fine interleaving
@@ -128,97 +130,40 @@ class PaymentService(
             consecutivePos++
 
             // Apply any fines that trigger at or before this consecutive position
-            while (nextFine != null && nextFine!!.triggerMonth <= consecutivePos) {
-                if (remaining <= 0) break
-                val fine = nextFine!!
-                val outstanding = fine.amount - fine.amountPaid
-                val apply = minOf(remaining, outstanding)
-                fine.amountPaid += apply
-                fine.status = if (fine.amountPaid >= fine.amount) LedgerStatus.PAID else LedgerStatus.PARTIAL
-                fineRepository.save(fine)
-                remaining -= apply
-                val pa = paymentAllocationRepository.save(PaymentAllocation(payment = payment, fine = fine, amountApplied = apply))
-                allocations.add(pa)
-                allocationDetails.add(
-                    AllocationDetail(
-                        type = "FINE",
-                        period = null,
-                        fineType = fine.fineType.name,
-                        amountApplied = apply,
-                        fullyPaid = fine.status == LedgerStatus.PAID,
-                    ),
-                )
+            while (remaining > 0) {
+                val fine = nextFine ?: break
+                if (fine.triggerMonth > consecutivePos) break
+                remaining -= applyFine(fine, payment, remaining, newAllocations, allocationDetails, modifiedFines)
                 nextFine = if (fineIterator.hasNext()) fineIterator.next() else null
             }
 
             if (remaining <= 0) break
-            val outstanding = ledger.amountDue - ledger.amountPaid
-            val apply = minOf(remaining, outstanding)
-            ledger.amountPaid += apply
-            ledger.status = if (ledger.amountPaid >= ledger.amountDue) LedgerStatus.PAID else LedgerStatus.PARTIAL
-            if (ledger.status == LedgerStatus.PAID) ledger.paidDate = request.paymentDate
-            ledgerRepository.save(ledger)
-            remaining -= apply
-            val pa = paymentAllocationRepository.save(PaymentAllocation(payment = payment, ledger = ledger, amountApplied = apply))
-            allocations.add(pa)
-            allocationDetails.add(
-                AllocationDetail(
-                    type = "DUES",
-                    period = "%d-%02d".format(ledger.periodYear, ledger.periodMonth),
-                    fineType = null,
-                    amountApplied = apply,
-                    fullyPaid = ledger.status == LedgerStatus.PAID,
-                ),
-            )
+            remaining -= applyLedger(ledger, payment, remaining, request.paymentDate, newAllocations, allocationDetails)
         }
 
         // Apply any remaining fines that didn't interleave with a ledger
-        while (nextFine != null && remaining > 0) {
-            val fine = nextFine!!
-            val outstanding = fine.amount - fine.amountPaid
-            val apply = minOf(remaining, outstanding)
-            fine.amountPaid += apply
-            fine.status = if (fine.amountPaid >= fine.amount) LedgerStatus.PAID else LedgerStatus.PARTIAL
-            fineRepository.save(fine)
-            remaining -= apply
-            paymentAllocationRepository.save(PaymentAllocation(payment = payment, fine = fine, amountApplied = apply))
-            allocationDetails.add(
-                AllocationDetail(
-                    type = "FINE",
-                    period = null,
-                    fineType = fine.fineType.name,
-                    amountApplied = apply,
-                    fullyPaid = fine.status == LedgerStatus.PAID,
-                ),
-            )
+        while (remaining > 0) {
+            val fine = nextFine ?: break
+            remaining -= applyFine(fine, payment, remaining, newAllocations, allocationDetails, modifiedFines)
             nextFine = if (fineIterator.hasNext()) fineIterator.next() else null
         }
 
         // Step 7: Apply excess to future months
+        val modifiedFutureLedgers = mutableListOf<DuesLedger>()
         if (remaining > 0) {
             var futureMonth = currentMonth.plusMonths(1)
             while (remaining > 0) {
                 val futureLedger = ledgerService.ensureAndGetLedger(house, futureMonth)
-                val outstanding = futureLedger.amountDue - futureLedger.amountPaid
-                val apply = minOf(remaining, outstanding)
-                futureLedger.amountPaid += apply
-                futureLedger.status = if (futureLedger.amountPaid >= futureLedger.amountDue) LedgerStatus.PAID else LedgerStatus.PARTIAL
-                if (futureLedger.status == LedgerStatus.PAID) futureLedger.paidDate = request.paymentDate
-                ledgerRepository.save(futureLedger)
-                remaining -= apply
-                paymentAllocationRepository.save(PaymentAllocation(payment = payment, ledger = futureLedger, amountApplied = apply))
-                allocationDetails.add(
-                    AllocationDetail(
-                        type = "DUES",
-                        period = "%d-%02d".format(futureLedger.periodYear, futureLedger.periodMonth),
-                        fineType = null,
-                        amountApplied = apply,
-                        fullyPaid = futureLedger.status == LedgerStatus.PAID,
-                    ),
-                )
+                remaining -= applyLedger(futureLedger, payment, remaining, request.paymentDate, newAllocations, allocationDetails)
+                modifiedFutureLedgers.add(futureLedger)
                 futureMonth = futureMonth.plusMonths(1)
             }
         }
+
+        // Flush all mutations in batch
+        fineRepository.saveAll(modifiedFines)
+        ledgerRepository.saveAll(unpaidLedgers.filter { it.amountPaid > 0 } + modifiedFutureLedgers)
+        paymentAllocationRepository.saveAll(newAllocations)
 
         return PaymentAllocationResult(
             paymentId = payment.id,
@@ -236,6 +181,8 @@ class PaymentService(
         val payment = findById(id)
         // Remove allocations first
         val allocations = paymentAllocationRepository.findByPaymentId(payment.id)
+        val modifiedLedgers = mutableListOf<DuesLedger>()
+        val modifiedFines = mutableListOf<Fine>()
         // Reverse the allocation effects
         for (alloc in allocations) {
             alloc.ledger?.let { ledger ->
@@ -247,7 +194,7 @@ class PaymentService(
                         else -> LedgerStatus.PAID
                     }
                 if (ledger.status != LedgerStatus.PAID) ledger.paidDate = null
-                ledgerRepository.save(ledger)
+                modifiedLedgers.add(ledger)
             }
             alloc.fine?.let { fine ->
                 fine.amountPaid -= alloc.amountApplied
@@ -257,11 +204,63 @@ class PaymentService(
                         fine.amountPaid < fine.amount -> LedgerStatus.PARTIAL
                         else -> LedgerStatus.PAID
                     }
-                fineRepository.save(fine)
+                modifiedFines.add(fine)
             }
         }
+        ledgerRepository.saveAll(modifiedLedgers)
+        fineRepository.saveAll(modifiedFines)
         paymentAllocationRepository.deleteAll(allocations)
         paymentRepository.delete(payment)
+    }
+
+    private fun applyFine(
+        fine: Fine,
+        payment: Payment,
+        remaining: Long,
+        newAllocations: MutableList<PaymentAllocation>,
+        allocationDetails: MutableList<AllocationDetail>,
+        modifiedFines: MutableList<Fine>,
+    ): Long {
+        val apply = minOf(remaining, fine.amount - fine.amountPaid)
+        fine.amountPaid += apply
+        fine.status = if (fine.amountPaid >= fine.amount) LedgerStatus.PAID else LedgerStatus.PARTIAL
+        modifiedFines.add(fine)
+        newAllocations.add(PaymentAllocation(payment = payment, fine = fine, amountApplied = apply))
+        allocationDetails.add(
+            AllocationDetail(
+                type = "FINE",
+                period = null,
+                fineType = fine.fineType.name,
+                amountApplied = apply,
+                fullyPaid = fine.status == LedgerStatus.PAID,
+            ),
+        )
+        return apply
+    }
+
+    private fun applyLedger(
+        ledger: DuesLedger,
+        payment: Payment,
+        remaining: Long,
+        paidDate: LocalDate,
+        newAllocations: MutableList<PaymentAllocation>,
+        allocationDetails: MutableList<AllocationDetail>,
+    ): Long {
+        val apply = minOf(remaining, ledger.amountDue - ledger.amountPaid)
+        ledger.amountPaid += apply
+        ledger.status = if (ledger.amountPaid >= ledger.amountDue) LedgerStatus.PAID else LedgerStatus.PARTIAL
+        if (ledger.status == LedgerStatus.PAID) ledger.paidDate = paidDate
+        newAllocations.add(PaymentAllocation(payment = payment, ledger = ledger, amountApplied = apply))
+        allocationDetails.add(
+            AllocationDetail(
+                type = "DUES",
+                period = "%d-%02d".format(ledger.periodYear, ledger.periodMonth),
+                fineType = null,
+                amountApplied = apply,
+                fullyPaid = ledger.status == LedgerStatus.PAID,
+            ),
+        )
+        return apply
     }
 
     private fun findById(id: Long): Payment =

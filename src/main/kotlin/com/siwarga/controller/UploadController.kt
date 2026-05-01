@@ -12,15 +12,18 @@ import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("/upload")
-class UploadController(private val csvImportService: CsvImportService) {
-
+class UploadController(
+    private val csvImportService: CsvImportService,
+) {
     @PostMapping("/residents", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @PreAuthorize("hasRole('ADMIN')")
-    fun uploadResidents(@RequestParam("file") file: MultipartFile): CsvImportResult =
-        csvImportService.importResidents(file.inputStream)
+    fun uploadResidents(
+        @RequestParam("file") file: MultipartFile,
+    ): CsvImportResult = csvImportService.importResidents(file.inputStream)
 
     @PostMapping("/payments", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
-    fun uploadPayments(@RequestParam("file") file: MultipartFile): CsvImportResult =
-        csvImportService.importPayments(file.inputStream)
+    fun uploadPayments(
+        @RequestParam("file") file: MultipartFile,
+    ): CsvImportResult = csvImportService.importPayments(file.inputStream)
 }
